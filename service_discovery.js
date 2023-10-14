@@ -1,26 +1,24 @@
-const consul = require('consul')();
+const Consul = require('consul');
 
-// Register a service with Consul
-consul.agent.service.register({
-  id: 'my-service',
-  name: 'my-service',
-  address: 'localhost',
-  port: 3000,
-  check: {
-    http: 'http://localhost:3000/health',
-    interval: '10s',
-  },
-});
+const consul = Consul();
 
-// Discover a service by name
-consul.agent.service.list((err, services) => {
-  if (err) throw err;
+// Function to discover a service by name
+const discoverService = (serviceName, callback) => {
+  consul.agent.service.list((err, services) => {
+    if (err) {
+      return callback(err);
+    }
 
-  // Retrieve the address and port of a service
-  const targetService = services['my-service'];
-  const targetAddress = targetService.Address;
-  const targetPort = targetService.Port;
+    const service = services[serviceName];
+    if (!service) {
+      return callback(new Error('Service not found'));
+    }
 
-  // Use this address and port to communicate with the service
-  console.log(`Service found at ${targetAddress}:${targetPort}`);
-});
+    const { ServiceAddress, ServicePort } = service;
+
+    const serviceUrl = `http://${ServiceAddress}:${ServicePort}`;
+    callback(null, serviceUrl);
+  });
+};
+
+module.exports = { discoverService };
