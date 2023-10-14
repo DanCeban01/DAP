@@ -2,6 +2,15 @@ from flask import Flask, request, jsonify
 import requests
 import urllib3
 from urllib3.util import Retry
+import sqlite3
+
+# Create a SQLite database and table for the product catalog
+conn = sqlite3.connect('product_catalog.db')
+cursor = conn.cursor()
+cursor.execute('CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, name TEXT, price REAL)')
+conn.commit()
+conn.close()
+
 
 app = Flask(__name__)
 
@@ -32,6 +41,22 @@ def get_all_products():
         return response.text, response.status_code
 
     return jsonify({'message': 'Failed to retrieve products'}), 503
+
+# Explicit endpoint: Add a product to the SQLite database
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    data = request.json
+    name = data.get('name')
+    price = data.get('price')
+    
+    conn = sqlite3.connect('product_catalog.db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO products (name, price) VALUES (?, ?)', (name, price))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'message': 'Product added'}), 201
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=3000)
