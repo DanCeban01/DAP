@@ -14,11 +14,30 @@ const discoverService = (serviceName, callback) => {
       return callback(new Error('Service not found'));
     }
 
-    const { ServiceAddress, ServicePort } = service;
+    const { ServicePort } = service;
 
-    const serviceUrl = `http://${ServiceAddress}:${ServicePort}`;
+    const serviceUrl = `http://localhost:${ServicePort}`;
     callback(null, serviceUrl);
   });
 };
 
-module.exports = { discoverService };
+// Define an endpoint for service discovery
+const express = require('express');
+const app = express();
+const serviceDiscoveryPort = 4000; // Port for the service discovery module
+
+app.get('/discover/:service', (req, res) => {
+  const serviceName = req.params.service;
+
+  discoverService(serviceName, (err, serviceUrl) => {
+    if (err) {
+      return res.status(500).json({ error: 'Service discovery failed' });
+    }
+
+    res.json({ serviceUrl });
+  });
+});
+
+app.listen(serviceDiscoveryPort, () => {
+  console.log(`Service Discovery is running on port ${serviceDiscoveryPort}`);
+});

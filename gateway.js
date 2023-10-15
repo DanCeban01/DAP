@@ -65,6 +65,11 @@ app.get('/discover/:service', (req, res) => {
   });
 });
 
+// Define an endpoint for the gateway itself
+app.get('/', (req, res) => {
+  res.json({ message: 'This is the API Gateway' });
+});
+
 app.listen(port, () => {
   console.log(`Gateway is running on port ${port}`);
 });
