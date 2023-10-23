@@ -1,5 +1,5 @@
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const http = require('http');
 const NodeCache = require('node-cache');
 const Consul = require('consul');
 
@@ -12,10 +12,26 @@ const cache = new NodeCache({ stdTTL: 60 });
 // Create a Consul instance for service discovery
 const consul = Consul();
 
-// Define proxy middleware for Microservices
+// Create an object to track the service endpoints and their current indices
+const serviceEndpoints = {};
+
+// Define proxy middleware for Microservices with Round Robin load balancing
 const createServiceProxy = (serviceName, servicePort) => {
-  return createProxyMiddleware({
-    target: `http://localhost:${servicePort}`, // Initialize with a default target, but it will be updated based on service discovery
+  // Initialize the service endpoint if it doesn't exist
+  if (!serviceEndpoints[serviceName]) {
+    serviceEndpoints[serviceName] = {
+      ports: [servicePort],
+      currentIdx: 0, // Start with the first replica
+    };
+  }
+
+  // Get the current endpoint index
+  const currentIdx = serviceEndpoints[serviceName].currentIdx;
+
+  // Update the target of the proxy middleware based on Round Robin
+  const targetPort = serviceEndpoints[serviceName].ports[currentIdx];
+  const proxyMiddleware = createProxyMiddleware({
+    target: `http://localhost:${targetPort}`,
     changeOrigin: true,
     pathRewrite: {
       [`^/${serviceName}`]: '',
@@ -35,33 +51,37 @@ const createServiceProxy = (serviceName, servicePort) => {
       }
     },
   });
+
+  // Update the index for the next request
+  serviceEndpoints[serviceName].currentIdx = (currentIdx + 1) % serviceEndpoints[serviceName].ports.length;
+
+  return proxyMiddleware;
 };
 
 // Define a route for service discovery
 app.get('/discover/:service', (req, res) => {
   const serviceName = req.params.service;
 
-  // Use Consul to discover a service by name
+  // Use Consul to discover the service and get all available ports
   consul.agent.service.list((err, services) => {
     if (err) {
       return res.status(500).json({ error: 'Service discovery failed' });
     }
 
-    // Get the port of the service
     const service = services[serviceName];
     if (!service) {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    const { ServicePort } = service;
+    const ports = services[serviceName].map((s) => s.ServicePort);
 
-    // Update the target of the proxy middleware based on service discovery
-    const proxyMiddleware = createServiceProxy(serviceName, ServicePort);
+    // Update the available ports for the service
+    serviceEndpoints[serviceName].ports = ports;
 
-    // Use the proxy middleware for routing requests
-    app.use(`/${serviceName}`, proxyMiddleware);
+    // Use the proxy middleware for routing requests with Round Robin load balancing
+    app.use(`/${serviceName}`, createServiceProxy(serviceName, ports[0]));
 
-    res.json({ message: 'Service discovered and proxy updated' });
+    res.json({ message: 'Service discovered and proxy updated with Round Robin load balancing' });
   });
 });
 
