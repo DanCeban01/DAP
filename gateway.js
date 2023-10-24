@@ -10,7 +10,7 @@ const port = 3000; // Port for the gateway
 const cache = new NodeCache({ stdTTL: 60 });
 
 // Create a Consul instance for service discovery
-const consul = Consul();
+const consul = new Consul();
 
 // Create an object to track the service endpoints and their current indices
 const serviceEndpoints = {};

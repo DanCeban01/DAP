@@ -1,6 +1,6 @@
 const Consul = require('consul');
 
-const consul = Consul();
+const consul = new Consul();
 
 // Function to discover a service by name
 const discoverService = (serviceName, callback) => {
