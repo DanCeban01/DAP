@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  gateway:
+    build: ./Gateway
+    ports:
+      - '3000:3000'
+
+  service_discovery:
+    build: ./SD
+    ports:
+      - '4000:4000'
+
+  order_management:
+    build: ./Orders
+    ports:
+      - '4040:4040'
+
+  product_catalog:
+    build: ./Catalog
+    ports:
+      - '3030:3030'
