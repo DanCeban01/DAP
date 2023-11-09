@@ -24,6 +24,10 @@ def session_with_retries(retries, backoff_factor, status_forcelist):
     session.mount('http://', adapter)
     return session
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'message': 'Connection Ok'}), 200
+
 # Explicit endpoint: Create a new order
 @app.route('/orders', methods=['POST'])
 def create_order():

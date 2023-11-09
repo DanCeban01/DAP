@@ -58,6 +58,10 @@ const createServiceProxy = (serviceName, servicePort) => {
   return proxyMiddleware;
 };
 
+app.get('/health', (req, res) => {
+  return res.json({ status: "OK" });
+})
+
 // Define a route for service discovery
 app.get('/discover/:service', (req, res) => {
   const serviceName = req.params.service;

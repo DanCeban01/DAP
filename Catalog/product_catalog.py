@@ -25,6 +25,11 @@ def session_with_retries(retries, backoff_factor, status_forcelist):
     session.mount('http://', adapter)
     return session
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'message': 'Connection Ok'}), 200
+
+
 # Explicit endpoint: Retrieve all products
 @app.route('/products', methods=['GET'])
 def get_all_products():
