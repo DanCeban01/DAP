@@ -14,8 +14,9 @@ conn.close()
 
 app = Flask(__name__)
 
-# Define the base URL of the Product Catalog service
-product_catalog_service_url = 'http://localhost:3000'
+# URL of the Product Catalog microservice (Service B)
+product_catalog_url = 'http://localhost:3030'
+
 
 class CircuitBreaker:
     def __init__(self, fail_threshold, reset_timeout):
@@ -71,15 +72,31 @@ def health():
     return jsonify({'message': 'Connection Ok'}), 200
 
 # Explicit endpoint: Create a new order
-@app.route('/orders', methods=['POST'])
+@app.route('/create_order', methods=['POST'])
 def create_order():
-    retries = 3  # Number of retries
-    backoff_factor = 0.1  # Backoff factor for exponential backoff
-    status_forcelist = [500]  # Retry on 500 Internal Server Error
+    try:
+        # Extract order details from the request
+        order_data = request.json
 
-    data = request.json
-    user_id = data.get('user_id')
-    cars = data.get('cars')
+        # Phase 1: Prepare
+        prepare_response = requests.post(f'{product_catalog_url}/prepare_order', json=order_data)
+
+        if prepare_response.status_code == 200 and prepare_response.json().get('status') == 'prepared':
+            # Phase 2: Commit
+            commit_response = requests.post(f'{product_catalog_url}/commit_order', json=order_data)
+
+            if commit_response.status_code == 200 and commit_response.json().get('status') == 'committed':
+                # Order successfully created
+                return jsonify({'status': 'order_created'}), 200
+            else:
+                # Rollback if Service B fails to commit
+                requests.post(f'{product_catalog_url}/rollback_order', json=order_data)
+                return jsonify({'status': 'rollback_order_failed'}), 500
+        else:
+            return jsonify({'status': 'prepare_order_failed'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
     # Use a session with retries and timeout to make a request to the Product Catalog service
     session = session_with_retries(retries, backoff_factor, status_forcelist)
