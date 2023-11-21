@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
-import requests
-import urllib3
+from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import sqlite3
+import requests
 import time
 
 # Create a SQLite database and table for the product catalog
@@ -61,7 +61,7 @@ order_management_circuit_breaker = CircuitBreaker(fail_threshold=3, reset_timeou
 def session_with_retries(retries, backoff_factor, status_forcelist):
     session = requests.Session()
     retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
-    adapter = requests.adapters.HTTPAdapter(max_retries=retry)
+    adapter = HTTPAdapter(max_retries=retry)
     session.mount('http://', adapter)
     return session
 
@@ -77,15 +77,16 @@ def get_all_products():
     backoff_factor = 0.1  # Backoff factor for exponential backoff
     status_forcelist = [500]  # Retry on 500 Internal Server Error
 
-    # # Use a session with retries and timeout
+      # Use a session with retries and timeout
     session = session_with_retries(retries, backoff_factor, status_forcelist)
-    response = session.get(f'{order_management_service_url}/orders', timeout=5)
 
-    if response.status_code == 200:
-    #     # You can process the response data here
+    try:
+        response = session.get(f'{order_management_service_url}/orders', timeout=5)
+        response.raise_for_status()
         return response.text, response.status_code
-
-    return jsonify({'message': 'Failed to retrieve products'}), 503
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error accessing Order Management service: {e}")
+        return jsonify({'message': 'Failed to retrieve products'}), 503
 
 # Explicit endpoint: Add a product to the SQLite database
 @app.route('/add_product', methods=['POST'])

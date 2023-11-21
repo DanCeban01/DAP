@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
-import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import sqlite3
+import requests
 import time
 
 # Create a SQLite database and table for orders
@@ -85,11 +85,13 @@ def create_order():
     session = session_with_retries(retries, backoff_factor, status_forcelist)
     response = session.get(f'{product_catalog_service_url}/products', timeout=5)
 
-    if response.status_code == 200:
-        # You can process the response data here
+    try:
+        response = session.get(f'{product_catalog_service_url}/products', timeout=5)
+        response.raise_for_status()
         return response.text, response.status_code
-
-    return jsonify({'message': 'Failed to create an order'}), 503
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error accessing Product Catalog service: {e}")
+        return jsonify({'message': 'Failed to create an order'}), 503
 
 # Explicit endpoint: Create a new order and store it in the SQLite database
 @app.route('/add_order', methods=['POST'])
