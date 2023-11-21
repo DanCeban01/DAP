@@ -3,6 +3,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import sqlite3
+import time
 
 # Create a SQLite database and table for orders
 conn = sqlite3.connect('order_management.db')
@@ -15,6 +16,47 @@ app = Flask(__name__)
 
 # Define the base URL of the Product Catalog service
 product_catalog_service_url = 'http://localhost:3000'
+
+class CircuitBreaker:
+    def __init__(self, fail_threshold, reset_timeout):
+        self.fail_threshold = fail_threshold
+        self.reset_timeout = reset_timeout
+        self.consecutive_failures = 0
+        self.opened_timestamp = None
+
+    def _is_open(self):
+        return (
+            self.opened_timestamp is not None
+            and time.time() - self.opened_timestamp < self.reset_timeout
+        )
+
+    def _reset(self):
+        self.consecutive_failures = 0
+        self.opened_timestamp = None
+
+    def _open(self):
+        self.consecutive_failures += 1
+        if self.consecutive_failures >= self.fail_threshold:
+            self.opened_timestamp = time.time()
+
+    def guard(self, func):
+        def wrapper(*args, **kwargs):
+            if self._is_open():
+                return None  # Circuit is open, do not execute the function
+
+            try:
+                result = func(*args, **kwargs)
+                self._reset()  # Reset if the function call is successful
+                return result
+            except Exception as e:
+                self._open()  # Mark a failure
+                raise e
+
+        return wrapper
+
+
+# Create a Circuit Breaker for the HTTP request to Product Catalog service
+product_catalog_circuit_breaker = CircuitBreaker(fail_threshold=3, reset_timeout=60)
 
 # Retry mechanism with exponential backoff
 def session_with_retries(retries, backoff_factor, status_forcelist):
