@@ -14,6 +14,9 @@ conn.close()
 
 app = Flask(__name__)
 
+# In-memory storage for orders
+orders = []
+
 # Define the base URL of the Order Management service
 order_management_service_url = 'http://localhost:4040'
 
@@ -65,10 +68,38 @@ def session_with_retries(retries, backoff_factor, status_forcelist):
     session.mount('http://', adapter)
     return session
 
+# Health check status endpoint
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'message': 'Connection Ok'}), 200
 
+# New endpoint: Prepare changes
+@app.route('/prepare_changes', methods=['POST'])
+def prepare_changes():
+    try:
+        data = request.json
+        name = data.get('name')
+        price = data.get('price')
+
+        # For simplicity, we'll insert into the SQLite database directly
+        conn = sqlite3.connect('product_catalog.db')
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO products (name, price) VALUES (?, ?)', (name, price))
+        conn.commit()
+        conn.close()
+
+        return jsonify({'status': 'prepared'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# New endpoint: Commit changes
+@app.route('/commit_changes', methods=['POST'])
+def commit_changes():
+    try:
+        # Here, we'll just return a success message
+        return jsonify({'status': 'committed'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Explicit endpoint: Retrieve all products
 @app.route('/products', methods=['GET'])
