@@ -4,7 +4,7 @@ const NodeCache = require('node-cache');
 const Consul = require('consul');
 
 const app = express();
-const port = 3000; // Port for the gateway
+const port = 3010; // Port for the gateway
 
 // Create a cache instance with a default TTL of 60 seconds
 const cache = new NodeCache({ stdTTL: 60 });

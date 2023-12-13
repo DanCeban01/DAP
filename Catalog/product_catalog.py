@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
-from hash_ring import HashRing
 import sqlite3
 import requests
 import time
@@ -71,9 +70,6 @@ def session_with_retries(retries, backoff_factor, status_forcelist):
 
 # Nodes for consistent hashing (change this based on your needs)
 nodes = ['cache_node_1', 'cache_node_2', 'cache_node_3']
-
-# Consistent Hashing Ring
-hash_ring = HashRing(nodes)
 
 # Health check status endpoint
 @app.route('/health', methods=['GET'])
