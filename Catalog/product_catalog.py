@@ -4,6 +4,8 @@ from urllib3.util import Retry
 import sqlite3
 import requests
 import time
+from prometheus_client import make_wsgi_app
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 # Create a SQLite database and table for the product catalog
 conn = sqlite3.connect('product_catalog.db')
@@ -13,6 +15,11 @@ conn.commit()
 conn.close()
 
 app = Flask(__name__)
+
+# Add prometheus wsgi middleware to route /metrics requests
+app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+    '/metrics': make_wsgi_app()
+})
 
 # In-memory storage for orders
 orders = []
