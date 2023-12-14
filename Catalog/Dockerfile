@@ -1,11 +1,14 @@
-FROM python:3.11-slim-buster
+FROM python:3.10
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+ADD requirements.txt /app
 
-COPY . .
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Add the current directory contents into the container at /app
+ADD . /app
 
 EXPOSE 3030
 

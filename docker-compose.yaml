@@ -1,51 +1,70 @@
-version: '3'
+version: "3.1"
 
 services:
-
   db:
+    container_name: postgres
     image: postgres:16.0
     restart: always
     environment:
-      POSTGRES_USER: root
       POSTGRES_PASSWORD: toor
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-      - ./database/product_init.sql:/docker-entrypoint-initdb.d/product_init.sql
-      - ./database/orders_init.sql:/docker-entrypoint-initdb.d/orders_init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root"]
-      interval: 30s
-      timeout: 15s
-      retries: 5
-      
+      - postgres_data:/var/lib/postgresql/data
+
   gateway:
     build: ./Gateway
     ports:
-      - '3010:3010'
+      - "8888:8888"
 
-  service_discovery:
-    build: ./SD
-    ports:
-      - '4000:4000'
+    #   service_discovery:
+    #     build: ./SD
+    #     ports:
+    #       - "4000:4000"
 
   order_management:
     build: ./Orders
     ports:
-      - '4040:4040'
+      - "4040:4040"
+    depends_on:
+      - db
 
-  product_catalog:
+  catalog-1:
+    container_name: catalog1
     build: ./Catalog
     ports:
-      - '3030:3030'
+      - "3030:3030"
+    environment:
+      - CATALOG_PORT=3030
+    depends_on:
+      - db
+
+  catalog-2:
+    container_name: catalog2
+    build: ./Catalog
+    ports:
+      - "3031:3031"
+    environment:
+      - CATALOG_PORT=3031
+    depends_on:
+      - db
+  
+  catalog-3:
+    container_name: catalog3
+    build: ./Catalog
+    ports:
+      - "3032:3032"
+    environment:
+      - CATALOG_PORT=3032
+    depends_on:
+      - db
 
   prometheus:
     image: prom/prometheus
     volumes:
       - ./prometheus:/etc/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
       - 9090:9090
 
@@ -60,3 +79,4 @@ services:
 
 volumes:
   grafana_data:
+  postgres_data:

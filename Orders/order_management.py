@@ -4,6 +4,8 @@ from urllib3.util import Retry
 import sqlite3
 import requests
 import time
+# from prometheus_client import make_wsgi_app
+# from werkzeug.middleware.dispatcher import DispatcherMiddleware
 
 # Create a SQLite database and table for orders
 conn = sqlite3.connect('order_management.db')
@@ -13,6 +15,46 @@ conn.commit()
 conn.close()
 
 app = Flask(__name__)
+
+# import bisect
+# import hashlib
+
+# class ConsistentHash:
+#     def init(self, nodes, replicas=100):
+#         self.replicas = replicas
+#         self.ring = []
+#         self.nodes = set()
+#         for node in nodes:
+#             self.add_node(node)
+
+#     def add_node(self, node):
+#         self.nodes.add(node)
+#         for i in range(self.replicas):
+#             replica_node = "{}:{}".format(node, i)
+#             key = self._hash(replica_node)
+#             bisect.insort(self.ring, (key, node))
+
+#     def remove_node(self, node):
+#         self.nodes.remove(node)
+#         self.ring = [n for n in self.ring if not n[1] == node]
+
+#     def get_node(self, key):
+#         if not self.ring:
+#             return None
+#         hash_key = self._hash(key)
+#         i = bisect.bisect_left(self.ring, (hash_key, -1))
+#         if i == len(self.ring):
+#             i = 0
+#         return self.ring[i][1]
+
+#     def _hash(self, key):
+#         return int(hashlib.md5(key.encode()).hexdigest(), 16)
+    
+
+# # Add prometheus wsgi middleware to route /metrics requests
+# app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {
+#     '/metrics': make_wsgi_app()
+# })
 
 # URL of the Product Catalog microservice (Service B)
 product_catalog_url = 'http://localhost:3030'
