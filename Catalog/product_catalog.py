@@ -145,9 +145,9 @@ def add_product():
     return jsonify({'message': 'Product added'}), 201
 
    # Clear cache for the added product
-    cache_node = hash_ring.get_node(request.remote_addr)
-    cache_url = f'http://{cache_node}/clear_cache'
-    requests.post(cache_url)
+    # cache_node = hash_ring.get_node(request.remote_addr)
+    # cache_url = f'http://{cache_node}/clear_cache'
+    # requests.post(cache_url)
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=3030)

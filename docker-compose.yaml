@@ -1,6 +1,25 @@
 version: '3'
 
 services:
+
+  db:
+    image: postgres:16.0
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: toor
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./database/product_init.sql:/docker-entrypoint-initdb.d/product_init.sql
+      - ./database/orders_init.sql:/docker-entrypoint-initdb.d/orders_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      
   gateway:
     build: ./Gateway
     ports:

@@ -8,7 +8,7 @@ import time
 # Create a SQLite database and table for orders
 conn = sqlite3.connect('order_management.db')
 cursor = conn.cursor()
-cursor.execute('CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, user_id INTEGER, status TEXT, cars TEXT)')
+cursor.execute('CREATE TABLE IF NOT EXISTS orders (id SERIAL PRIMARY KEY, user_id INTEGER, status TEXT, cars TEXT)')
 conn.commit()
 conn.close()
 

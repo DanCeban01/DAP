@@ -1,4 +1,5 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const http = require('http');
 const NodeCache = require('node-cache');
 const Consul = require('consul');
@@ -57,6 +58,85 @@ const createServiceProxy = (serviceName, servicePort) => {
 
   return proxyMiddleware;
 };
+
+let orderServiceCounter = 0
+let productServiceCounter = 0
+const MAX_REROUTES = 3
+const TASK_TIMEOUT_MS = (process.env.TASK_TIMEOUT ? parseInt(process.env.TASK_TIMEOUT) : 10) * 1000
+
+async function callService (serviceType, requestMethod, requestUrl, reqBody) {
+  const serviceDiscoveryResponse = await axios.get(serviceDiscoveryEndpoint)
+  const orderServices = serviceDiscoveryResponse.data.userServices
+  const productServices = serviceDiscoveryResponse.data.tweetServices
+
+  for (let i = 0; i < MAX_REROUTES; ++i) {
+    orderServiceCounter = orderServiceCounter % orderServices.length
+    productServiceCounter = productServiceCounter % productServices.length
+
+    let nextService
+    if (serviceType === 'order_management') {
+      nextService = orderServices[orderServiceCounter]
+      orderServiceCounter++
+    } else if (serviceType === 'product_catalog') {
+      nextService = productServices[productServiceCounter]
+      productServiceCounter++
+    }
+
+    const { host, port } = nextService
+    const nextServiceUrl = `http://${host}:${port}`
+
+    try {
+      console.log(`Attempting call to service of type ${serviceType} at ${nextServiceUrl}`)
+      const serviceResponse = await axios({
+        method: requestMethod,
+        url: `${nextServiceUrl}/${requestUrl}`,
+        data: reqBody
+      })
+      return { statusCode: 200, responseBody: serviceResponse.data, serviceUrl: nextServiceUrl }
+    } catch (error) {
+      if (error.code === 'ENOTFOUND') {
+        console.log(`Failed to call service of type ${serviceType} at ${nextServiceUrl}`)
+        circuitBreaker(serviceType, nextServiceUrl)
+        continue
+      } else {
+        return { statusCode: error.response.status, responseBody: error.response.data }
+      }
+    }
+  }
+
+  return { statusCode: 500, responseBody: { message: `${serviceType} Service Call Failed` } }
+}
+
+function circuitBreaker (serviceType, serviceUrl) {
+  setTimeout(async () => {
+    const start = Date.now()
+    let errors = 0
+
+    while (true) {
+      try {
+        await axios({
+          method: 'get',
+          url: `${serviceUrl}/status`
+        })
+      } catch (error) {
+        if (error.code === 'ENOTFOUND') {
+          errors++
+
+          if (errors >= 3 && Date.now() - start <= TASK_TIMEOUT_MS * 3.5) {
+            console.log(`CIRCUIT BREAKER: Service of type ${serviceType} located at ${serviceUrl} is UNHEALTHY!!!`)
+            return
+          }
+
+          continue
+        }
+      }
+
+      break
+    }
+  }, 0)
+}
+
+app.use(bodyParser.json())
 
 app.get('/health', (req, res) => {
   return res.json({ status: "OK" });
